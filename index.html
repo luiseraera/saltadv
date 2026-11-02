@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SaltJus · Controle de processos</title>
+<meta name="description" content="Controle de processos, prazos, audiências e honorários para advogados. By SALT TECH SOLUTION.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SaltJus">
+<meta property="og:title" content="SaltJus · Controle de processos">
+<meta property="og:description" content="Processos, prazos em dias úteis, audiências e honorários em um só lugar.">
+<meta property="og:image" content="icons/og-image.png">
+<meta property="og:locale" content="pt_BR">
+<meta name="theme-color" content="#1f5c4a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SaltJus">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preload" href="fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<script>try{var t=localStorage.getItem('jus_theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<style>
+@font-face{font-family:"IBM Plex Sans";font-weight:400;font-display:swap;src:url(fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:500;font-display:swap;src:url(fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:600;font-display:swap;src:url(fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Serif";font-weight:600;font-display:swap;src:url(fonts/ibm-plex-serif-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:400;font-display:swap;src:url(fonts/ibm-plex-mono-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:500;font-display:swap;src:url(fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2")}
+/* Layout: barra lateral fixa com navegação + área de trabalho em cartões; no celular, navegação vira abas no topo */
+:root{
+  --bg:#f4f6f4; --surface:#ffffff; --ink:#1b2420; --muted:#5b6a63; --line:#dde4e0;
+  --accent:#1f5c4a; --accent-ink:#ffffff; --accent-soft:#e2efe8;
+  --bad:#b3261e; --bad-soft:#fbe8e6; --warn:#8f5b00; --warn-soft:#fcf0d6; --ok:#2b7a4b; --ok-soft:#e3f3e8;
+  --f-display:"IBM Plex Serif", Georgia, serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111614; --surface:#19201d; --ink:#e5ebe8; --muted:#98a69f; --line:#2a3430;
+    --accent:#72c4a4; --accent-ink:#0c1a14; --accent-soft:#1d3a2f;
+    --bad:#ff8f86; --bad-soft:#3b1f1c; --warn:#f2c15f; --warn-soft:#3a2f16; --ok:#7fd39d; --ok-soft:#183324;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111614; --surface:#19201d; --ink:#e5ebe8; --muted:#98a69f; --line:#2a3430;
+  --accent:#72c4a4; --accent-ink:#0c1a14; --accent-soft:#1d3a2f;
+  --bad:#ff8f86; --bad-soft:#3b1f1c; --warn:#f2c15f; --warn-soft:#3a2f16; --ok:#7fd39d; --ok-soft:#183324;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+button,input,select,textarea{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:232px 1fr;min-height:100%}
+aside{background:var(--surface);border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh}
+.brand{display:flex;flex-direction:column;gap:2px;padding:0 8px}
+.brand b{font:600 22px/1.1 var(--f-display);letter-spacing:.2px}
+.brand span{font-size:12px;color:var(--muted)}
+nav{display:flex;flex-direction:column;gap:2px}
+nav a{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:6px;color:var(--ink);text-decoration:none;font-weight:500}
+nav a:hover{background:var(--bg)}
+nav a.on{background:var(--accent-soft);color:var(--accent)}
+nav a .n{font:500 12px var(--f-mono);color:var(--muted)}
+nav a .n.alert{color:var(--bad)}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--muted);padding:0 8px}
+main{padding:28px clamp(16px,3vw,40px) 60px;min-width:0;display:flex;flex-direction:column;gap:20px}
+.head{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between}
+h1{font:600 26px/1.2 var(--f-display);margin:0;text-wrap:balance}
+h2{font:600 16px/1.3 var(--f-body);margin:0}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:6px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn.danger{color:var(--bad)}
+.btn.danger.armed{background:var(--bad);color:#fff;border-color:var(--bad)}
+.btn.link{border:none;background:none;padding:0;color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:4px;border-top:3px solid var(--line)}
+.kpi .v{font:600 28px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.kpi .l{font-size:13px;color:var(--muted)}
+.kpi.bad{border-top-color:var(--bad)} .kpi.bad .v{color:var(--bad)}
+.kpi.warn{border-top-color:var(--warn)}
+.kpi.acc{border-top-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+.mono{font-family:var(--f-mono);font-size:13.5px;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.tbl-wrap{overflow-x:auto;margin:0 -18px;padding:0 18px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.4px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr.click{cursor:pointer} tr.click:hover td{background:var(--bg)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:500;padding:2px 8px;border-radius:99px;background:var(--bg);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.chip.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip.acc{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.list{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:11px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:none}
+.item .t{font-weight:500}
+.item .m{font-size:13px;color:var(--muted)}
+.item.done .t{text-decoration:line-through;color:var(--muted)}
+.stripe{width:4px;align-self:stretch;border-radius:2px;background:var(--line)}
+.stripe.bad{background:var(--bad)} .stripe.warn{background:var(--warn)} .stripe.acc{background:var(--accent)}
+.date-box{width:52px;text-align:center;border:1px solid var(--line);border-radius:6px;padding:4px 0;line-height:1.15}
+.date-box b{display:block;font:600 18px var(--f-display)}
+.date-box span{font-size:11px;color:var(--muted);text-transform:uppercase}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input[type=text],input[type=password],input[type=search],input[type=date],input[type=time],input[type=number],input[type=email],input[type=tel],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
+textarea{resize:vertical;min-height:70px;width:100%}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:none;background:var(--surface);padding:7px 12px;cursor:pointer;font-size:13px}
+.seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.group-h{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;margin-top:6px}
+.group-h.bad{color:var(--bad)}
+.empty{padding:28px 10px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:10px;align-items:center}
+.banner{border:1px solid var(--line);background:var(--warn-soft);color:var(--ink);border-radius:var(--r);padding:10px 14px;font-size:13px}
+.welcome{background:var(--accent-soft);border:1px solid transparent;border-radius:var(--r);padding:18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.welcome p{margin:2px 0 0;color:var(--muted);font-size:14px;max-width:60ch}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+.fields .full{grid-column:1/-1}
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:13px;font-weight:500}
+.f .hint{font-size:12px;color:var(--muted)}
+.f .hint.bad{color:var(--bad)} .f .hint.ok{color:var(--ok)}
+.calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;align-items:end}
+.calc-out{font-size:14px}
+.calc-out b{font:600 20px var(--f-display)}
+.overlay{position:fixed;inset:0;background:rgba(10,16,13,.45);display:flex;align-items:flex-start;justify-content:center;padding:5vh 16px;z-index:20;overflow-y:auto}
+.modal{background:var(--surface);border-radius:10px;border:1px solid var(--line);width:min(680px,100%);padding:22px;display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.modal-h{display:flex;justify-content:space-between;align-items:center}
+.modal-f{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.x{border:none;background:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1}
+.dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px 20px}
+.dl > div > span:first-child{display:block;font-size:12px;color:var(--muted)}
+td.mono{white-space:nowrap}
+.timeline{display:flex;flex-direction:column;gap:0;border-left:2px solid var(--line);margin-left:6px}
+.tl{position:relative;padding:0 0 14px 16px}
+.tl::before{content:"";position:absolute;left:-6px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+.tl .d{font-size:12px;color:var(--muted)}
+.back{align-self:flex-start}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:6px;font-size:14px;z-index:30}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar{display:grid;grid-template-columns:110px 1fr 28px;gap:8px;align-items:center;font-size:13px}
+.bar i{display:block;height:8px;border-radius:4px;background:var(--accent)}
+.bar .track{background:var(--bg);border-radius:4px}
+.loading{padding:60px;text-align:center;color:var(--muted)}
+[hidden]{display:none!important}
+.auth-wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:32px 16px}
+.auth-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px;width:min(400px,100%);display:flex;flex-direction:column;gap:14px}
+.auth-brand{display:flex;gap:12px;align-items:center}
+.auth-brand img{width:48px;height:48px;border-radius:11px}
+.auth-brand b{display:block;font:600 24px/1.1 var(--f-display)}
+.auth-brand span{font-size:13px;color:var(--muted)}
+.auth-card form{display:flex;flex-direction:column;gap:12px}
+.auth-card .btn{width:100%;padding:10px 14px}
+.auth-msg{font-size:13px;color:var(--muted);min-height:1.2em}
+.auth-msg.bad{color:var(--bad)}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}
+.or::before,.or::after{content:"";flex:1;border-top:1px solid var(--line)}
+.auth-foot{font-size:12px;color:var(--muted);text-align:center}
+.auth-foot a,.legal a{color:var(--accent)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13px}
+.check input{margin-top:3px}
+.sync{font-size:12px;color:var(--muted)}
+.sync.bad{color:var(--bad)}
+.who{font-size:13px;color:var(--ink);font-weight:500;word-break:break-word}
+#dlg-root .overlay{z-index:40}
+.danger-zone{border-color:var(--bad-soft)}
+@media (max-width:900px){
+  .grid2{grid-template-columns:1fr}
+}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr}
+  aside{position:static;height:auto;padding:12px 12px 0;border-right:none;border-bottom:1px solid var(--line);gap:10px}
+  nav{flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:8px}
+  nav a{flex:none;gap:6px}
+  .side-foot{display:none}
+  .fields{grid-template-columns:1fr}
+  main{padding-top:18px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="auth" class="auth-wrap" hidden>
+  <div class="auth-card">
+    <div class="auth-brand"><img src="icons/icon-192.png" alt=""><div><b>SaltJus</b><span>Controle de processos para advogados</span></div></div>
+    <form id="lf">
+      <div class="f"><label for="aem">E-mail</label><input type="email" id="aem" autocomplete="username" required></div>
+      <div class="f"><label for="apw">Senha</label><input type="password" id="apw" autocomplete="current-password" required></div>
+      <button class="btn pri" type="submit" id="login">Entrar</button>
+      <div class="auth-msg" id="amsg" role="status"></div>
+    </form>
+    <button class="btn link" type="button" id="reset" style="width:auto;align-self:center">Esqueci a senha</button>
+    <div class="or">ou</div>
+    <button class="btn" type="button" data-google>Entrar com Google</button>
+    <button class="btn" type="button" id="signup">Criar conta</button>
+    <div class="auth-foot">Ao entrar, você concorda com os <a href="termos.html">Termos de Uso</a> e a <a href="privacidade.html">Política de Privacidade</a>.</div>
+  </div>
+</div>
+<div class="app" id="app" hidden>
+  <aside>
+    <div class="brand"><b>SaltJus</b><span>Controle de processos</span></div>
+    <nav id="nav"></nav>
+    <div class="side-foot">
+      <div class="who" id="who"></div>
+      <div class="sync" id="sync" role="status"></div>
+    </div>
+  </aside>
+  <main id="main"><div class="loading">Carregando seus processos…</div></main>
+</div>
+<div id="modal-root"></div>
+<div id="dlg-root"></div>
+
+<script>
+/* ===================== Utilidades ===================== */
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const rid = p => p + "_" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const pad = n => String(n).padStart(2,"0");
+const iso = d => d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y,m-1,d); };
+const today = () => iso(new Date());
+const addDays = (s,n) => { const d=parse(s); d.setDate(d.getDate()+n); return iso(d); };
+const diff = (a,b) => Math.round((parse(b)-parse(a))/86400000);
+const DOW = ["dom","seg","ter","qua","qui","sex","sáb"];
+const MES = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+const fmtD = s => s ? s.split("-").reverse().join("/") : "—";
+const fmtDL = s => { if(!s) return "—"; const d=parse(s); return DOW[d.getDay()]+", "+fmtD(s); };
+const BRL = new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"});
+const money = v => BRL.format(Number(v)||0);
+const toNum = v => { if(typeof v==="number") return v; const s=String(v||"").replace(/[^\d,.-]/g,""); return Number(s.includes(",") ? s.replace(/\./g,"").replace(",",".") : s) || 0; };
+
+/* ===================== Feriados e dias úteis (CPC art. 219, 220, 224) ===================== */
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da);}
+const _hol = {};
+function holidays(y){
+  if(_hol[y]) return _hol[y];
+  const m = {};
+  [["01-01","Confraternização Universal"],["04-21","Tiradentes"],["05-01","Dia do Trabalho"],["09-07","Independência"],["10-12","N. Sra. Aparecida"],["11-02","Finados"],["11-15","Proclamação da República"],["11-20","Consciência Negra"],["12-25","Natal"]]
+    .forEach(([md,n]) => m[y+"-"+md]=n);
+  const e = easter(y), rel = (n,name) => { const d=new Date(e); d.setDate(d.getDate()+n); m[iso(d)]=name; };
+  rel(-48,"Carnaval"); rel(-47,"Carnaval"); rel(-2,"Sexta-feira Santa"); rel(60,"Corpus Christi");
+  return _hol[y]=m;
+}
+function naoUtil(s){
+  const d = parse(s), wd = d.getDay(), mo = d.getMonth()+1, da = d.getDate();
+  if((mo===12 && da>=20) || (mo===1 && da<=20)) return "Recesso forense";
+  const h = holidays(d.getFullYear())[s]; if(h) return h;
+  if(wd===0 || wd===6) return "Fim de semana";
+  return null;
+}
+function calcPrazo(inicio, dias, uteis){
+  let d = inicio, n = 0; const pulados = [];
+  if(uteis){
+    while(n < dias){ d = addDays(d,1); const r = naoUtil(d); if(r) pulados.push([d,r]); else n++; }
+  } else {
+    d = addDays(d, dias);
+    while(naoUtil(d)){ pulados.push([d, naoUtil(d)+" (prorrogação)"]); d = addDays(d,1); }
+  }
+  return { fim:d, pulados };
+}
+
+/* ===================== Número CNJ (Res. 65/2008) ===================== */
+const UF = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SE","SP","TO"];
+const cnjDig = s => String(s||"").replace(/\D/g,"").slice(0,20);
+function cnjFmt(s){
+  const d = cnjDig(s); let o = d.slice(0,7);
+  if(d.length>7) o += "-"+d.slice(7,9);
+  if(d.length>9) o += "."+d.slice(9,13);
+  if(d.length>13) o += "."+d.slice(13,14);
+  if(d.length>14) o += "."+d.slice(14,16);
+  if(d.length>16) o += "."+d.slice(16,20);
+  return o;
+}
+function cnjCheck(s){
+  const d = cnjDig(s); if(d.length!==20) return null;
+  const calc = 98n - (BigInt(d.slice(0,7)+d.slice(9)+"00") % 97n);
+  return Number(calc) === Number(d.slice(7,9));
+}
+function cnjMake(seq, ano, j, tr, orig){
+  const base = String(seq).padStart(7,"0"), rest = ano+j+tr+orig;
+  const dv = 98n - (BigInt(base+rest+"00") % 97n);
+  return cnjFmt(base+String(dv).padStart(2,"0")+rest);
+}
+function cnjTribunal(s){
+  const d = cnjDig(s); if(d.length!==20) return "";
+  const j = d[13], tr = Number(d.slice(14,16));
+  if(j==="8") return UF[tr-1] ? "TJ"+UF[tr-1] : "";
+  if(j==="4") return "TRF"+tr;
+  if(j==="5") return tr ? "TRT"+tr : "TST";
+  if(j==="6") return UF[tr-1] ? "TRE-"+UF[tr-1] : "TSE";
+  if(j==="3") return "STJ"; if(j==="1") return "STF";
+  return "";
+}
+
+/* ===================== Armazenamento (Supabase + cópia local) ===================== */
+const S = { items:[], view:"painel", sel:null, ready:false, sync:{t:"",bad:false}, filtroProc:{q:"",status:"Ativo"}, filtroPrazo:{st:"pend",tipo:""} };
+const all = t => S.items.filter(i => i.t===t);
+const byId = id => S.items.find(i => i.id===id);
+let SB = null, USER = null, PEND = {}, SEQ = 0, flushT = null, flushing = false, retryT = null;
+const ck = () => "jus_data_"+USER.id, pk = () => "jus_pend_"+USER.id;
+function cacheSave(){ if(!USER) return; try{ localStorage.setItem(ck(), JSON.stringify(S.items)); localStorage.setItem(pk(), JSON.stringify(PEND)); }catch(e){} }
+function cacheLoad(){ try{ S.items = JSON.parse(localStorage.getItem(ck())||"[]"); PEND = JSON.parse(localStorage.getItem(pk())||"{}"); }catch(e){ S.items=[]; PEND={}; } }
+function cacheWipe(){ try{ Object.keys(localStorage).forEach(k => { if(k.indexOf("jus_data_")===0 || k.indexOf("jus_pend_")===0) localStorage.removeItem(k); }); }catch(e){} }
+function setSync(t, bad){ S.sync = {t, bad:!!bad}; const el = $("#sync"); if(el){ el.textContent = t; el.className = "sync"+(bad?" bad":""); } const c = $("#sync-conta"); if(c){ c.textContent = t; c.className = "sync"+(bad?" bad":""); } }
+const pendCount = () => Object.keys(PEND).length;
+
+async function save(obj){
+  if(!obj.id) obj.id = rid(obj.t.slice(0,3));
+  obj.atualizado = Date.now();
+  const i = S.items.findIndex(x => x.id===obj.id);
+  if(i>=0) S.items[i] = obj; else S.items.push(obj);
+  PEND[obj.id] = {op:"up", v:++SEQ};
+  cacheSave(); render(); schedule();
+  return obj;
+}
+async function remove(id){
+  S.items = S.items.filter(x => x.id!==id);
+  PEND[id] = {op:"del", v:++SEQ};
+  cacheSave(); render(); schedule();
+}
+function schedule(){ clearTimeout(flushT); flushT = setTimeout(flush, 400); }
+async function flush(){
+  if(!SB || !USER || flushing) return;
+  const snap = JSON.parse(JSON.stringify(PEND)), ids = Object.keys(snap);
+  if(!ids.length){ setSync("Tudo salvo na nuvem"); return; }
+  flushing = true; setSync("Salvando…");
+  const now = new Date().toISOString();
+  const ups = ids.filter(i => snap[i].op==="up").map(byId).filter(Boolean).map(o => { const {id, ...dados} = o; return {user_id:USER.id, id, tipo:o.t, dados, updated_at:now}; });
+  const dels = ids.filter(i => snap[i].op==="del");
+  try{
+    for(let k=0; k<ups.length; k+=200){ const r = await SB.from("registros").upsert(ups.slice(k,k+200), {onConflict:"user_id,id"}); if(r.error) throw r.error; }
+    for(let k=0; k<dels.length; k+=200){ const r = await SB.from("registros").delete().eq("user_id",USER.id).in("id",dels.slice(k,k+200)); if(r.error) throw r.error; }
+    ids.forEach(i => { if(PEND[i] && PEND[i].v===snap[i].v) delete PEND[i]; });
+    cacheSave(); flushing = false;
+    if(pendCount()) schedule(); else setSync("Tudo salvo na nuvem");
+  }catch(e){
+    flushing = false;
+    const n = pendCount();
+    setSync(n+(n===1?" alteração aguardando":" alterações aguardando")+" conexão. Salvas neste aparelho.", true);
+    clearTimeout(retryT); retryT = setTimeout(flush, 15000);
+    if(!S.errShown){ S.errShown = true; render(); }
+  }
+}
+async function pull(){
+  let rows = [], from = 0;
+  while(true){
+    const r = await SB.from("registros").select("id,tipo,dados").range(from, from+999);
+    if(r.error) throw r.error;
+    rows = rows.concat(r.data); if(r.data.length < 1000) break; from += 1000;
+  }
+  const map = new Map(rows.map(x => [x.id, {...x.dados, id:x.id, t:x.tipo}]));
+  for(const [id,p] of Object.entries(PEND)){
+    if(p.op==="del") map.delete(id);
+    else { const loc = S.items.find(i => i.id===id); if(loc) map.set(id, loc); }
+  }
+  S.items = [...map.values()]; cacheSave(); S.errShown = false; render();
+}
+function sincronizar(){
+  if(!USER || flushing) return;
+  setSync("Sincronizando…");
+  pull().then(flush).catch(() => setSync("Sem conexão. Mostrando a última cópia salva neste aparelho.", true));
+}
+document.addEventListener("visibilitychange", () => { if(document.visibilityState==="visible") sincronizar(); });
+window.addEventListener("online", () => flush());
+
+/* ===================== Login ===================== */
+function showAuth(a){ $("#auth").hidden = !a; $("#app").hidden = a; }
+function amsg(t, bad){ const e = $("#amsg"); e.textContent = t; e.className = "auth-msg"+(bad?" bad":""); }
+const nomeUser = u => (u.user_metadata && (u.user_metadata.name || u.user_metadata.full_name)) || "";
+function enter(u){
+  USER = u; cacheLoad(); S.ready = true;
+  $("#who").textContent = nomeUser(u) || u.email;
+  showAuth(false); route(); sincronizar();
+}
+function leave(){ USER = null; S.items = []; PEND = {}; S.ready = false; showAuth(true); $("#apw").value = ""; }
+
+function initAuth(){
+  const C = window.APP_CONFIG || {};
+  if(!window.supabase || !C.SUPABASE_URL){ showAuth(true); amsg("Falta configurar o config.js com os dados do Supabase (veja o LEIA-ME).", true); return; }
+  SB = supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY);
+  SB.auth.getSession().then(r => { const s = r.data.session; if(s && !USER) enter(s.user); else if(!s) showAuth(true); });
+  SB.auth.onAuthStateChange((ev, s) => {
+    if(ev==="SIGNED_OUT"){ leave(); }
+    else if(ev==="PASSWORD_RECOVERY"){
+      uiPrompt("Nova senha", "Digite sua nova senha (mínimo 8 caracteres)", {type:"password", ok:"Salvar senha"}).then(p => {
+        if(!p) return;
+        if(p.length < 8){ uiAlert("A senha precisa ter pelo menos 8 caracteres. Use o link do e-mail de novo.", "Senha muito curta"); return; }
+        SB.auth.updateUser({password:p}).then(r => r.error ? uiAlert("Não foi possível trocar a senha. Peça um novo link em “Esqueci a senha”.", "Senha") : toast("Senha alterada."));
+      });
+    }
+    else if(ev==="SIGNED_IN" && s && (!USER || USER.id!==s.user.id)) enter(s.user);
+  });
+  $("#lf").addEventListener("submit", e => {
+    e.preventDefault(); amsg("Entrando…");
+    SB.auth.signInWithPassword({email:$("#aem").value.trim(), password:$("#apw").value}).then(r => {
+      if(!r.error){ amsg(""); return; }
+      const m = (r.error.message||"").toLowerCase();
+      if(m.includes("invalid login")) amsg("E-mail ou senha incorretos. Se ainda não tem conta, clique em Criar conta.", true);
+      else if(m.includes("not confirmed")) amsg("Confirme seu e-mail pelo link que enviamos (veja também o spam).", true);
+      else if(m.includes("rate limit")) amsg("Muitas tentativas. Aguarde alguns minutos.", true);
+      else amsg("Não foi possível entrar: "+r.error.message, true);
+    }).catch(() => amsg("Sem conexão. Tente novamente.", true));
+  });
+  $("#reset").addEventListener("click", () => {
+    const em = $("#aem").value.trim(); if(!em){ amsg("Digite seu e-mail acima e clique de novo em Esqueci a senha.", true); return; }
+    SB.auth.resetPasswordForEmail(em, {redirectTo: location.origin}).then(() => amsg("Se o e-mail tiver conta, enviamos um link para criar uma nova senha."));
+  });
+  $("#signup").addEventListener("click", signupOpen);
+  document.addEventListener("click", e => {
+    const b = e.target.closest && e.target.closest("[data-google]"); if(!b) return;
+    if(b.closest("#modal-root") && !$("#sgt").checked){ $("#sgm").textContent = "Para continuar, aceite os Termos de Uso e a Política de Privacidade."; return; }
+    b.disabled = true;
+    fetch(C.SUPABASE_URL+"/auth/v1/settings", {headers:{apikey:C.SUPABASE_ANON_KEY}}).then(r => r.json()).then(j => {
+      if(!(j && j.external && j.external.google)){ b.disabled = false; uiAlert("O login com o Google ainda não está ativado. Use e-mail e senha por enquanto.", "Google indisponível"); return; }
+      return SB.auth.signInWithOAuth({provider:"google", options:{redirectTo:location.origin, queryParams:{prompt:"select_account"}}});
+    }).catch(() => { b.disabled = false; uiAlert("Sem conexão. Tente novamente.", "Google"); });
+  });
+}
+function signupOpen(){
+  $("#modal-root").innerHTML = `<div class="overlay" data-act="fechar-bg"><form class="modal" id="sgf" role="dialog" aria-modal="true" aria-label="Criar conta" style="width:min(440px,100%)">
+    <div class="modal-h"><h2 style="font:600 20px var(--f-display)">Criar conta</h2><button class="x" type="button" data-act="fechar" aria-label="Fechar">×</button></div>
+    <div class="f"><label for="sgn">Nome</label><input type="text" id="sgn" autocomplete="name" required></div>
+    <div class="f"><label for="sge">E-mail</label><input type="email" id="sge" autocomplete="email" required value="${esc($("#aem").value.trim())}"></div>
+    <div class="f"><label for="sgp">Senha</label><input type="password" id="sgp" autocomplete="new-password" minlength="8" required><span class="hint">Mínimo de 8 caracteres.</span></div>
+    <div class="f"><label for="sgc">Repita a senha</label><input type="password" id="sgc" autocomplete="new-password" required></div>
+    <label class="check"><input type="checkbox" id="sgt"> <span>Li e aceito os <a href="termos.html" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="privacidade.html" target="_blank" rel="noopener">Política de Privacidade</a>.</span></label>
+    <div class="auth-msg bad" id="sgm" role="alert"></div>
+    <button class="btn pri" type="submit" id="sgok">Criar conta</button>
+    <div class="or">ou</div>
+    <button class="btn" type="button" data-google>Criar com Google</button>
+  </form></div>`;
+  $("#sgn").focus();
+  $("#sgf").addEventListener("submit", e => {
+    e.preventDefault();
+    const nm = $("#sgn").value.trim(), em = $("#sge").value.trim(), pw = $("#sgp").value, m = t => $("#sgm").textContent = t;
+    if(!nm) return m("Informe seu nome.");
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return m("Informe um e-mail válido.");
+    if(pw.length < 8) return m("A senha precisa ter pelo menos 8 caracteres.");
+    if(pw !== $("#sgc").value) return m("As senhas não são iguais.");
+    if(!$("#sgt").checked) return m("Para criar a conta, aceite os Termos de Uso e a Política de Privacidade.");
+    m(""); const bt = $("#sgok"); bt.disabled = true; bt.textContent = "Criando…";
+    SB.auth.signUp({email:em, password:pw, options:{data:{name:nm}, emailRedirectTo:location.origin}}).then(r => {
+      bt.disabled = false; bt.textContent = "Criar conta";
+      if(r.error){ const s = (r.error.message||"").toLowerCase(); return m(s.includes("rate limit") ? "Muitas tentativas. Aguarde alguns minutos." : s.includes("password") ? "Senha fraca. Tente uma senha mais forte." : "Não foi possível criar a conta: "+r.error.message); }
+      if(r.data.user && r.data.user.identities && r.data.user.identities.length===0) return m("Este e-mail já tem conta. Feche esta janela e use Entrar ou Esqueci a senha.");
+      $("#aem").value = em; closeModal();
+      if(!r.data.session) uiAlert("Enviamos um link de confirmação para "+em+". Abra o e-mail (veja também o spam), confirme e depois clique em Entrar.", "Conta criada");
+    }).catch(() => { bt.disabled = false; bt.textContent = "Criar conta"; m("Sem conexão. Tente novamente."); });
+  });
+}
+
+/* ===================== Diálogos ===================== */
+function uiDialog({title, text, input, ok="OK", cancel="Cancelar", danger=false, noCancel=false}){
+  return new Promise(res => {
+    const root = $("#dlg-root");
+    root.innerHTML = `<div class="overlay"><form class="modal" role="alertdialog" aria-modal="true" aria-label="${esc(title)}" style="width:min(440px,100%)">
+      <h2 style="font:600 19px var(--f-display)">${esc(title)}</h2><p style="margin:0">${esc(text)}</p>
+      ${input?`<input id="dlg-in" type="${input}" autocomplete="${input==="password"?"new-password":"off"}">`:""}
+      <div class="toolbar" style="justify-content:flex-end">${noCancel?"":`<button class="btn" type="button" id="dlg-no">${esc(cancel)}</button>`}<button class="btn ${danger?"danger armed":"pri"}" type="submit">${esc(ok)}</button></div></form></div>`;
+    const f = root.querySelector("form"), done = v => { root.innerHTML = ""; res(v); };
+    f.addEventListener("submit", e => { e.preventDefault(); done(input ? $("#dlg-in").value : true); });
+    const no = $("#dlg-no"); if(no) no.addEventListener("click", () => done(input ? null : false));
+    (input ? $("#dlg-in") : f.querySelector("button[type=submit]")).focus();
+  });
+}
+const uiAlert = (text, title="Aviso") => uiDialog({title, text, noCancel:true});
+const uiConfirm = (text, o={}) => uiDialog({title:o.title||"Confirmar", text, ok:o.ok||"Confirmar", danger:o.danger});
+const uiPrompt = (title, text, o={}) => uiDialog({title, text, input:o.type||"text", ok:o.ok||"OK"});
+
+/* ===================== Regras de negócio ===================== */
+function urg(ev){
+  if(ev.feito) return {cls:"", chip:"ok", txt:"Concluído"};
+  const d = diff(today(), ev.data);
+  if(d<0) return {cls:"bad", chip:"bad", txt:"Vencido há "+(-d)+" d"};
+  if(d===0) return {cls:"bad", chip:"bad", txt:"Hoje"};
+  if(d===1) return {cls:"warn", chip:"warn", txt:"Amanhã"};
+  if(d<=3) return {cls:"warn", chip:"warn", txt:"Em "+d+" dias"};
+  if(d<=7) return {cls:"acc", chip:"acc", txt:"Em "+d+" dias"};
+  return {cls:"", chip:"", txt:"Em "+d+" dias"};
+}
+const procLabel = p => p ? (p.numero || "Sem número") : "";
+const cliName = id => (byId(id)||{}).nome || "—";
+function proxEvento(pid){
+  return all("evento").filter(e => e.processoId===pid && !e.feito).sort((a,b)=>a.data.localeCompare(b.data))[0];
+}
+const statusChip = s => `<span class="chip ${s==="Ativo"?"acc":s==="Suspenso"?"warn":""}">${esc(s||"—")}</span>`;
+
+/* ===================== Navegação ===================== */
+const VIEWS = [["painel","Painel"],["processos","Processos"],["prazos","Prazos e agenda"],["clientes","Clientes"],["honorarios","Honorários"],["conta","Conta"]];
+function route(){
+  const h = location.hash.replace("#","");
+  S.view = VIEWS.some(v=>v[0]===h) ? h : "painel";
+  S.sel = null; render(); window.scrollTo(0,0);
+}
+window.addEventListener("hashchange", route);
+
+function renderNav(){
+  const venc = all("evento").filter(e => !e.feito && e.data <= today()).length;
+  const cnt = { processos: all("processo").filter(p=>p.status==="Ativo").length, prazos: venc, clientes: all("cliente").length };
+  $("#nav").innerHTML = VIEWS.map(([k,l]) => {
+    const n = cnt[k]; const alert = k==="prazos" && venc>0;
+    return `<a href="#${k}" class="${S.view===k?"on":""}">${l}${n?`<span class="n ${alert?"alert":""}" title="${alert?"Prazos vencidos ou para hoje":""}">${n}</span>`:""}</a>`;
+  }).join("");
+}
+
+/* ===================== Render ===================== */
+function render(){
+  if(!S.ready){ return; }
+  renderNav();
+  const m = $("#main");
+  let h = "";
+  if(S.sync.bad && S.view!=="conta") h += `<div class="banner">${esc(S.sync.t)}</div>`;
+  if(S.view==="processos" && S.sel) h += viewProcesso(byId(S.sel));
+  else h += ({painel:viewPainel, processos:viewProcessos, prazos:viewPrazos, clientes:viewClientes, honorarios:viewHonorarios, conta:viewConta})[S.view]();
+  m.innerHTML = h;
+  afterRender();
+}
+
+function welcome(){
+  if(S.items.length) return "";
+  return `<div class="welcome"><div><h2>Comece cadastrando um processo</h2><p>Cadastre clientes, processos e prazos. Os vencimentos são calculados em dias úteis, já descontando feriados nacionais e o recesso forense. Quer ver como fica com dados? Carregue um exemplo e apague depois com um clique.</p></div>
+  <div class="toolbar"><button class="btn" data-act="demo" type="button">Carregar exemplo</button><button class="btn pri" data-act="novo-proc" type="button">Novo processo</button></div></div>`;
+}
+
+function eventItem(e, showProc=true){
+  const u = urg(e), p = byId(e.processoId), d = parse(e.data);
+  return `<div class="item ${e.feito?"done":""}">
+    <div class="date-box"><b>${pad(d.getDate())}</b><span>${MES[d.getMonth()]}</span></div>
+    <div><div class="t">${esc(e.titulo)}</div>
+      <div class="m">${esc(e.tipo)}${e.hora?" · "+esc(e.hora):""}${e.local?" · "+esc(e.local):""}${showProc && p?` · <button class="btn link" data-act="abrir-proc" data-id="${p.id}" type="button">${esc(procLabel(p))}</button> · ${esc(cliName(p.clienteId))}`:""}</div></div>
+    <div class="toolbar" style="justify-content:flex-end">${u.txt?`<span class="chip ${u.chip}">${u.txt}</span>`:""}
+      <button class="btn sm" data-act="toggle-ev" data-id="${e.id}" type="button">${e.feito?"Reabrir":"Concluir"}</button>
+      <button class="btn sm" data-act="edit-ev" data-id="${e.id}" type="button">Editar</button></div>
+  </div>`;
+}
+
+function viewPainel(){
+  const t = today(), evs = all("evento"), procs = all("processo"), hon = all("honorario");
+  const pend = evs.filter(e=>!e.feito);
+  const venc = pend.filter(e=>e.data<t), semana = pend.filter(e=>e.data>=t && e.data<=addDays(t,7));
+  const mes = t.slice(0,7), aud = evs.filter(e=>e.tipo==="Audiência" && e.data.startsWith(mes));
+  const aberto = hon.filter(x=>!x.pago).reduce((s,x)=>s+toNum(x.valor),0);
+  const prox = pend.sort((a,b)=>a.data.localeCompare(b.data)||(a.hora||"").localeCompare(b.hora||"")).slice(0,8);
+  const areas = {}; procs.filter(p=>p.status==="Ativo").forEach(p=>areas[p.area||"Outra"]=(areas[p.area||"Outra"]||0)+1);
+  const maxA = Math.max(1,...Object.values(areas));
+  const honAb = hon.filter(x=>!x.pago).sort((a,b)=>(a.venc||"9").localeCompare(b.venc||"9")).slice(0,5);
+  return `<div class="head"><div><h1>Painel</h1><div class="sub">${fmtDL(t)}</div></div>
+    <div class="toolbar"><button class="btn" data-act="novo-ev" type="button">Novo prazo</button><button class="btn pri" data-act="novo-proc" type="button">Novo processo</button></div></div>
+  ${welcome()}
+  <div class="kpis">
+    <div class="kpi acc"><span class="v">${procs.filter(p=>p.status==="Ativo").length}</span><span class="l">Processos ativos</span></div>
+    <div class="kpi ${venc.length?"bad":""}"><span class="v">${venc.length}</span><span class="l">Prazos vencidos e não concluídos</span></div>
+    <div class="kpi warn"><span class="v">${semana.length}</span><span class="l">Compromissos nos próximos 7 dias</span></div>
+    <div class="kpi"><span class="v">${aud.length}</span><span class="l">Audiências em ${MES[new Date().getMonth()]}</span></div>
+    <div class="kpi"><span class="v" style="font-size:22px">${money(aberto)}</span><span class="l">Honorários a receber</span></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-h"><h2>Próximos compromissos</h2><a href="#prazos" class="btn sm">Ver agenda</a></div>
+      ${prox.length?`<div class="list">${prox.map(e=>eventItem(e)).join("")}</div>`:`<div class="empty">Nenhum prazo pendente.</div>`}</div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card"><h2>Processos ativos por área</h2>
+        ${Object.keys(areas).length?`<div class="bars">${Object.entries(areas).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="bar"><span>${esc(k)}</span><span class="track"><i style="width:${v/maxA*100}%"></i></span><span class="mono">${v}</span></div>`).join("")}</div>`:`<div class="empty">Sem processos ativos.</div>`}</div>
+      <div class="card"><div class="card-h"><h2>Honorários em aberto</h2><a href="#honorarios" class="btn sm">Ver todos</a></div>
+        ${honAb.length?`<div class="list">${honAb.map(x=>{const late=x.venc&&x.venc<t;return `<div class="item" style="grid-template-columns:1fr auto"><div><div class="t">${esc(x.descricao)}</div><div class="m">${esc(cliName(x.clienteId))} · vence ${fmtD(x.venc)}</div></div><div style="text-align:right"><div class="mono">${money(x.valor)}</div>${late?`<span class="chip bad">Atrasado</span>`:""}</div></div>`}).join("")}</div>`:`<div class="empty">Nada em aberto.</div>`}</div>
+    </div>
+  </div>`;
+}
+
+function viewProcessos(){
+  const f = S.filtroProc, q = f.q.toLowerCase().trim();
+  let ps = all("processo").filter(p => !f.status || p.status===f.status);
+  if(q) ps = ps.filter(p => [p.numero, cnjDig(p.numero), cliName(p.clienteId), p.contraria, p.area, p.vara, p.comarca, p.classe].join(" ").toLowerCase().includes(q));
+  ps.sort((a,b) => { const ea=proxEvento(a.id), eb=proxEvento(b.id); return (ea?ea.data:"9").localeCompare(eb?eb.data:"9"); });
+  const sts = ["Ativo","Suspenso","Arquivado","Encerrado",""];
+  return `<div class="head"><div><h1>Processos</h1><div class="sub">${all("processo").length} cadastrados</div></div>
+    <button class="btn pri" data-act="novo-proc" type="button">Novo processo</button></div>
+  ${welcome()}
+  <div class="card">
+    <div class="toolbar">
+      <input type="search" id="q-proc" placeholder="Buscar por número, cliente, parte, vara…" value="${esc(f.q)}" style="flex:1;min-width:220px" aria-label="Buscar processos">
+      <div class="seg" role="group" aria-label="Filtrar por situação">${sts.map(s=>`<button type="button" data-act="f-status" data-v="${s}" class="${f.status===s?"on":""}">${s||"Todos"}</button>`).join("")}</div>
+    </div>
+    ${ps.length?`<div class="tbl-wrap"><table><thead><tr><th>Número</th><th>Cliente</th><th>Parte contrária</th><th>Área</th><th>Vara / Comarca</th><th>Situação</th><th>Próximo prazo</th></tr></thead><tbody>
+    ${ps.map(p=>{const e=proxEvento(p.id), u=e&&urg(e);return `<tr class="click" data-act="abrir-proc" data-id="${p.id}" tabindex="0">
+      <td class="mono">${esc(procLabel(p))}</td><td>${esc(cliName(p.clienteId))}<div class="muted" style="font-size:12px">${esc(p.polo||"")}</div></td><td>${esc(p.contraria||"—")}</td><td>${esc(p.area||"—")}</td>
+      <td>${esc(p.vara||"—")}<div class="muted" style="font-size:12px">${esc([p.comarca,p.tribunal].filter(Boolean).join(" · "))}</div></td><td>${statusChip(p.status)}</td>
+      <td>${e?`${fmtD(e.data)}<div><span class="chip ${u.chip}">${u.txt}</span></div>`:`<span class="muted">—</span>`}</td></tr>`}).join("")}
+    </tbody></table></div>`:`<div class="empty">Nenhum processo encontrado${q||f.status?" com esse filtro":""}.</div>`}
+  </div>`;
+}
+
+function viewProcesso(p){
+  if(!p){ S.sel=null; return viewProcessos(); }
+  const evs = all("evento").filter(e=>e.processoId===p.id).sort((a,b)=>a.data.localeCompare(b.data));
+  const hon = all("honorario").filter(h=>h.processoId===p.id);
+  const and = (p.andamentos||[]).slice().sort((a,b)=>b.d.localeCompare(a.d));
+  const ok = cnjCheck(p.numero);
+  return `<button class="btn sm back" data-act="voltar" type="button">← Processos</button>
+  <div class="head"><div><h1 class="mono" style="font-size:22px">${esc(procLabel(p))}</h1>
+    <div class="sub">${esc(cliName(p.clienteId))} × ${esc(p.contraria||"—")} ${ok===false?`<span class="chip bad">Dígito verificador não confere</span>`:""}</div></div>
+    <div class="toolbar">${p.numero?`<button class="btn" data-act="copiar" data-v="${esc(p.numero)}" type="button">Copiar número</button>`:""}<button class="btn" data-act="edit-proc" data-id="${p.id}" type="button">Editar</button></div></div>
+  <div class="card"><div class="dl">
+    <div><span>Situação</span>${statusChip(p.status)}</div><div><span>Área</span>${esc(p.area||"—")}</div><div><span>Classe / ação</span>${esc(p.classe||"—")}</div>
+    <div><span>Polo do cliente</span>${esc(p.polo||"—")}</div><div><span>Vara</span>${esc(p.vara||"—")}</div><div><span>Comarca</span>${esc(p.comarca||"—")}</div>
+    <div><span>Tribunal</span>${esc(p.tribunal||"—")}</div><div><span>Valor da causa</span>${p.valor?money(p.valor):"—"}</div><div><span>Distribuído em</span>${fmtD(p.distribuicao)}</div>
+  </div>${p.obs?`<div><span class="muted" style="font-size:12px">Observações</span><div>${esc(p.obs)}</div></div>`:""}</div>
+  <div class="grid2">
+    <div class="card"><div class="card-h"><h2>Prazos e audiências</h2><button class="btn sm pri" data-act="novo-ev" data-proc="${p.id}" type="button">Adicionar</button></div>
+      ${evs.length?`<div class="list">${evs.map(e=>eventItem(e,false)).join("")}</div>`:`<div class="empty">Nenhum prazo neste processo.</div>`}</div>
+    <div class="card"><h2>Andamentos</h2>
+      <form id="f-and" class="f" style="gap:8px"><label for="and-txt">Registrar andamento</label>
+        <textarea id="and-txt" placeholder="Ex.: Juntada de contestação pela parte ré" required></textarea>
+        <div class="toolbar"><input type="date" id="and-d" value="${today()}" aria-label="Data do andamento"><button class="btn pri sm" type="submit">Registrar</button></div></form>
+      ${and.length?`<div class="timeline">${and.map((a,i)=>`<div class="tl"><div class="d">${fmtD(a.d)}</div><div>${esc(a.txt)}</div></div>`).join("")}</div>`:`<div class="muted" style="font-size:13px">Nenhum andamento registrado.</div>`}
+    </div>
+  </div>
+  <div class="card"><div class="card-h"><h2>Honorários deste processo</h2><button class="btn sm" data-act="novo-hon" data-proc="${p.id}" type="button">Adicionar</button></div>
+    ${hon.length?honTable(hon):`<div class="muted" style="font-size:13px">Nenhum lançamento.</div>`}</div>`;
+}
+
+function viewPrazos(){
+  const f = S.filtroPrazo, t = today();
+  let evs = all("evento").filter(e => f.st==="todos" || (f.st==="pend" ? !e.feito : e.feito)).filter(e => !f.tipo || e.tipo===f.tipo);
+  evs.sort((a,b)=>a.data.localeCompare(b.data)||(a.hora||"").localeCompare(b.hora||""));
+  if(f.st==="feitos") evs.reverse();
+  const groups = f.st==="feitos" ? [["Concluídos", evs]] : [
+    ["Vencidos", evs.filter(e=>!e.feito && e.data<t), "bad"],
+    ["Hoje", evs.filter(e=>e.data===t)],
+    ["Próximos 7 dias", evs.filter(e=>e.data>t && e.data<=addDays(t,7))],
+    ["Mais adiante", evs.filter(e=>e.data>addDays(t,7))],
+    ...(f.st==="todos" ? [["Anteriores concluídos", evs.filter(e=>e.feito && e.data<t)]] : [])
+  ];
+  return `<div class="head"><div><h1>Prazos e agenda</h1><div class="sub">Prazos, audiências, reuniões e diligências</div></div>
+    <button class="btn pri" data-act="novo-ev" type="button">Novo compromisso</button></div>
+  <div class="card"><h2>Calculadora de prazo</h2>
+    <div class="calc">
+      <div class="f"><label for="c-ini">Intimação / publicação em</label><input type="date" id="c-ini" value="${t}"></div>
+      <div class="f"><label for="c-dias">Prazo (dias)</label><input type="number" id="c-dias" value="15" min="1" max="365"></div>
+      <div class="f"><label for="c-tipo">Contagem</label><select id="c-tipo"><option value="u">Dias úteis (CPC)</option><option value="c">Dias corridos</option></select></div>
+      <button class="btn" data-act="calc" type="button">Calcular</button>
+    </div>
+    <div class="calc-out" id="c-out"></div>
+  </div>
+  <div class="card">
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Situação">${[["pend","Pendentes"],["feitos","Concluídos"],["todos","Todos"]].map(([k,l])=>`<button type="button" data-act="f-st" data-v="${k}" class="${f.st===k?"on":""}">${l}</button>`).join("")}</div>
+      <select id="f-tipo" aria-label="Tipo"><option value="">Todos os tipos</option>${["Prazo","Audiência","Reunião","Diligência"].map(x=>`<option ${f.tipo===x?"selected":""}>${x}</option>`).join("")}</select>
+    </div>
+    ${evs.length ? groups.filter(g=>g[1].length).map(([l,list,c])=>`<div class="group-h ${c||""}">${l} · ${list.length}</div><div class="list">${list.map(e=>eventItem(e)).join("")}</div>`).join("") : `<div class="empty">Nada por aqui.</div>`}
+  </div>`;
+}
+
+function viewClientes(){
+  const cs = all("cliente").sort((a,b)=>a.nome.localeCompare(b.nome));
+  return `<div class="head"><div><h1>Clientes</h1><div class="sub">${cs.length} cadastrados</div></div><button class="btn pri" data-act="novo-cli" type="button">Novo cliente</button></div>
+  ${welcome()}
+  <div class="card">${cs.length?`<div class="tbl-wrap"><table><thead><tr><th>Nome</th><th>CPF / CNPJ</th><th>Contato</th><th class="num">Processos</th><th class="num">A receber</th></tr></thead><tbody>
+  ${cs.map(c=>{const np=all("processo").filter(p=>p.clienteId===c.id).length, ar=all("honorario").filter(h=>h.clienteId===c.id&&!h.pago).reduce((s,h)=>s+toNum(h.valor),0);
+    return `<tr class="click" data-act="edit-cli" data-id="${c.id}" tabindex="0"><td><b style="font-weight:500">${esc(c.nome)}</b></td><td class="mono">${esc(c.doc||"—")}</td><td>${esc(c.tel||"")}<div class="muted" style="font-size:12px">${esc(c.email||"")}</div></td><td class="num">${np}</td><td class="num">${ar?money(ar):"—"}</td></tr>`}).join("")}
+  </tbody></table></div>`:`<div class="empty">Nenhum cliente cadastrado.</div>`}</div>`;
+}
+
+function honTable(hs){
+  const t = today();
+  return `<div class="tbl-wrap"><table><thead><tr><th>Descrição</th><th>Cliente</th><th>Processo</th><th>Vencimento</th><th class="num">Valor</th><th>Situação</th><th></th></tr></thead><tbody>
+  ${hs.map(h=>{const p=byId(h.processoId), late=!h.pago&&h.venc&&h.venc<t;return `<tr><td>${esc(h.descricao)}</td><td>${esc(cliName(h.clienteId))}</td><td class="mono">${p?esc(procLabel(p)):"—"}</td><td>${fmtD(h.venc)}</td><td class="num">${money(h.valor)}</td>
+    <td>${h.pago?`<span class="chip ok">Recebido</span>`:late?`<span class="chip bad">Atrasado</span>`:`<span class="chip">Em aberto</span>`}</td>
+    <td style="white-space:nowrap"><button class="btn sm" data-act="toggle-hon" data-id="${h.id}" type="button">${h.pago?"Desfazer":"Marcar recebido"}</button> <button class="btn sm" data-act="edit-hon" data-id="${h.id}" type="button">Editar</button></td></tr>`}).join("")}
+  </tbody></table></div>`;
+}
+
+function viewHonorarios(){
+  const hs = all("honorario").sort((a,b)=>(a.pago-b.pago)||(a.venc||"").localeCompare(b.venc||"")), t = today();
+  const sum = f => hs.filter(f).reduce((s,h)=>s+toNum(h.valor),0);
+  return `<div class="head"><div><h1>Honorários</h1><div class="sub">Contratuais, êxito e parcelas</div></div><button class="btn pri" data-act="novo-hon" type="button">Novo lançamento</button></div>
+  <div class="kpis">
+    <div class="kpi acc"><span class="v" style="font-size:22px">${money(sum(h=>!h.pago))}</span><span class="l">A receber</span></div>
+    <div class="kpi ${sum(h=>!h.pago&&h.venc&&h.venc<t)?"bad":""}"><span class="v" style="font-size:22px">${money(sum(h=>!h.pago&&h.venc&&h.venc<t))}</span><span class="l">Atrasado</span></div>
+    <div class="kpi"><span class="v" style="font-size:22px">${money(sum(h=>h.pago))}</span><span class="l">Recebido</span></div>
+  </div>
+  <div class="card">${hs.length?honTable(hs):`<div class="empty">Nenhum lançamento.</div>`}</div>`;
+}
+
+/* ===================== Formulários ===================== */
+const AREAS = ["Cível","Trabalhista","Família","Previdenciário","Tributário","Consumidor","Criminal","Empresarial","Administrativo","Outra"];
+function field(f, v){
+  const id = "fld-"+f.k, req = f.req?"required":"", cls = "f"+(f.full?" full":"");
+  let input;
+  if(f.type==="select") input = `<select id="${id}" name="${f.k}" ${req}>${f.opts.map(o=>{const [val,lab]=Array.isArray(o)?o:[o,o];return `<option value="${esc(val)}" ${String(v??"")===String(val)?"selected":""}>${esc(lab)}</option>`}).join("")}</select>`;
+  else if(f.type==="textarea") input = `<textarea id="${id}" name="${f.k}" ${req}>${esc(v)}</textarea>`;
+  else input = `<input id="${id}" name="${f.k}" type="${f.type||"text"}" value="${esc(v)}" ${req} ${f.ph?`placeholder="${esc(f.ph)}"`:""} ${f.mono?'class="mono"':""}>`;
+  return `<div class="${cls}"><label for="${id}">${esc(f.label)}${f.req?" *":""}</label>${input}${f.hint!==undefined?`<span class="hint" id="${id}-hint">${esc(f.hint)}</span>`:""}</div>`;
+}
+function openForm({title, spec, obj, onSave, onDelete, extra="", after}){
+  const root = $("#modal-root");
+  root.innerHTML = `<div class="overlay" data-act="fechar-bg"><form class="modal" id="mform" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <div class="modal-h"><h2 style="font:600 20px var(--f-display)">${esc(title)}</h2><button class="x" type="button" data-act="fechar" aria-label="Fechar">×</button></div>
+    ${extra}
+    <div class="fields">${spec.map(f=>field(f, obj[f.k] ?? f.def ?? "")).join("")}</div>
+    <div class="modal-f"><div>${onDelete?`<button class="btn danger" type="button" id="m-del">Excluir</button>`:""}</div>
+      <div class="toolbar"><button class="btn" type="button" data-act="fechar">Cancelar</button><button class="btn pri" type="submit">Salvar</button></div></div>
+  </form></div>`;
+  const form = $("#mform");
+  form.addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const o = { ...obj };
+    spec.forEach(f => { const el = form.elements[f.k]; if(el) o[f.k] = f.type==="number"||f.money ? (el.value===""?"":toNum(el.value)) : el.value.trim(); });
+    const ok = await onSave(o, form);
+    if(ok!==false) closeModal();
+  });
+  if(onDelete){ const b = $("#m-del"); b.addEventListener("click", async () => {
+    if(!b.classList.contains("armed")){ b.classList.add("armed"); b.textContent = "Confirmar exclusão"; return; }
+    await onDelete(); closeModal();
+  }); }
+  if(after) after(form);
+  const first = form.querySelector("input,select,textarea"); if(first) first.focus();
+}
+function closeModal(){ $("#modal-root").innerHTML = ""; }
+document.addEventListener("keydown", e => { if(e.key==="Escape" && $("#modal-root").innerHTML) closeModal(); });
+
+const cliOpts = () => [["","— selecione —"], ...all("cliente").sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>[c.id,c.nome])];
+const procOpts = () => [["","— sem processo —"], ...all("processo").map(p=>[p.id, procLabel(p)+" · "+cliName(p.clienteId)])];
+
+function formProcesso(p={t:"processo", status:"Ativo", andamentos:[]}){
+  openForm({ title: p.id ? "Editar processo" : "Novo processo", obj:p,
+    spec:[
+      {k:"numero",label:"Número do processo (CNJ)",full:true,mono:true,ph:"0000000-00.0000.0.00.0000",hint:"Digite só os números; a máscara é aplicada sozinha."},
+      {k:"clienteId",label:"Cliente",type:"select",opts:cliOpts()},
+      {k:"novoCliente",label:"…ou cadastre um cliente novo",ph:"Nome completo"},
+      {k:"polo",label:"Polo do cliente",type:"select",opts:["Autor","Réu","Reclamante","Reclamada","Exequente","Executado","Terceiro interessado"]},
+      {k:"contraria",label:"Parte contrária"},
+      {k:"area",label:"Área",type:"select",opts:AREAS},
+      {k:"classe",label:"Classe / ação",ph:"Ex.: Procedimento Comum Cível"},
+      {k:"vara",label:"Vara",ph:"Ex.: 3ª Vara Cível"},
+      {k:"comarca",label:"Comarca",ph:"Ex.: Santos"},
+      {k:"tribunal",label:"Tribunal",ph:"Preenchido pelo número"},
+      {k:"distribuicao",label:"Data de distribuição",type:"date"},
+      {k:"valor",label:"Valor da causa (R$)",money:true,ph:"0,00"},
+      {k:"status",label:"Situação",type:"select",opts:["Ativo","Suspenso","Arquivado","Encerrado"]},
+      {k:"obs",label:"Observações",type:"textarea",full:true}
+    ],
+    after(form){
+      const n = form.elements.numero, hint = $("#fld-numero-hint"), trib = form.elements.tribunal;
+      const upd = () => { n.value = cnjFmt(n.value); const c = cnjCheck(n.value);
+        if(c===null){ hint.className="hint"; hint.textContent = cnjDig(n.value).length ? "Faltam "+(20-cnjDig(n.value).length)+" dígitos." : "Digite só os números; a máscara é aplicada sozinha."; }
+        else if(c){ hint.className="hint ok"; const tr=cnjTribunal(n.value); hint.textContent = "Número válido"+(tr?" · "+tr:"")+"."; if(tr && !trib.value) trib.value = tr; }
+        else { hint.className="hint bad"; hint.textContent = "Dígito verificador não confere. Confira o número."; } };
+      n.addEventListener("input", upd); if(n.value) upd();
+    },
+    async onSave(o){
+      if(o.novoCliente){ const c = await save({t:"cliente", nome:o.novoCliente}); o.clienteId = c.id; }
+      delete o.novoCliente;
+      if(!o.clienteId){ toast("Escolha ou cadastre o cliente."); return false; }
+      await save(o); toast(p.id ? "Processo atualizado." : "Processo cadastrado.");
+      if(!p.id){ S.view="processos"; S.sel=o.id; if(location.hash!=="#processos") history.replaceState(null,"","#processos"); render(); }
+    },
+    onDelete: p.id ? async () => { await remove(p.id); S.sel=null; toast("Processo excluído. Prazos e honorários dele continuam cadastrados."); } : null
+  });
+}
+
+function formEvento(e={t:"evento", tipo:"Prazo", data:today(), feito:false}){
+  openForm({ title: e.id ? "Editar compromisso" : "Novo compromisso", obj:e,
+    extra: `<details ${e.id?"":"open"} class="card" style="padding:12px;gap:8px"><summary style="cursor:pointer;font-weight:500">Calcular vencimento a partir da intimação</summary>
+      <div class="calc"><div class="f"><label for="m-ini">Intimação em</label><input type="date" id="m-ini" value="${today()}"></div>
+      <div class="f"><label for="m-dias">Dias</label><input type="number" id="m-dias" value="15" min="1"></div>
+      <div class="f"><label for="m-tipo">Contagem</label><select id="m-tipo"><option value="u">Úteis</option><option value="c">Corridos</option></select></div>
+      <button class="btn" type="button" id="m-calc">Aplicar</button></div><div class="muted" style="font-size:12px" id="m-out"></div></details>`,
+    spec:[
+      {k:"titulo",label:"Descrição",req:true,full:true,ph:"Ex.: Prazo para réplica"},
+      {k:"tipo",label:"Tipo",type:"select",opts:["Prazo","Audiência","Reunião","Diligência"]},
+      {k:"processoId",label:"Processo",type:"select",opts:procOpts()},
+      {k:"data",label:"Data",type:"date",req:true},
+      {k:"hora",label:"Horário",type:"time"},
+      {k:"local",label:"Local / link",full:true,ph:"Ex.: Sala 4 ou link da videoconferência"},
+      {k:"obs",label:"Observações",type:"textarea",full:true}
+    ],
+    after(form){
+      $("#m-calc").addEventListener("click", () => {
+        const r = calcPrazo($("#m-ini").value || today(), Number($("#m-dias").value)||1, $("#m-tipo").value==="u");
+        form.elements.data.value = r.fim;
+        $("#m-out").textContent = "Vencimento: "+fmtDL(r.fim)+". "+(r.pulados.length? r.pulados.length+" dia(s) não útil(eis) desconsiderado(s).":"");
+      });
+    },
+    async onSave(o){ await save(o); toast("Compromisso salvo."); },
+    onDelete: e.id ? async () => { await remove(e.id); toast("Compromisso excluído."); } : null
+  });
+}
+
+function formCliente(c={t:"cliente"}){
+  const procs = c.id ? all("processo").filter(p=>p.clienteId===c.id) : [];
+  openForm({ title: c.id ? "Cliente" : "Novo cliente", obj:c,
+    spec:[
+      {k:"nome",label:"Nome / razão social",req:true,full:true},
+      {k:"doc",label:"CPF / CNPJ",mono:true},
+      {k:"tel",label:"Telefone / WhatsApp",type:"tel"},
+      {k:"email",label:"E-mail",type:"email",full:true},
+      {k:"obs",label:"Observações",type:"textarea",full:true}
+    ],
+    extra: procs.length ? `<div class="card" style="padding:12px;gap:6px"><b style="font-weight:500">Processos deste cliente</b>${procs.map(p=>`<div class="toolbar" style="justify-content:space-between"><button class="btn link mono" type="button" data-act="abrir-proc" data-id="${p.id}">${esc(procLabel(p))}</button>${statusChip(p.status)}</div>`).join("")}</div>` : "",
+    async onSave(o){ await save(o); toast("Cliente salvo."); },
+    onDelete: c.id ? async () => { await remove(c.id); toast("Cliente excluído."); } : null
+  });
+}
+
+function formHonorario(h={t:"honorario", pago:false}){
+  openForm({ title: h.id ? "Editar lançamento" : "Novo lançamento", obj:h,
+    spec:[
+      {k:"descricao",label:"Descrição",req:true,full:true,ph:"Ex.: Honorários contratuais, parcela 2/6"},
+      {k:"processoId",label:"Processo",type:"select",opts:procOpts()},
+      {k:"clienteId",label:"Cliente",type:"select",opts:cliOpts(),hint:"Se vazio, usa o cliente do processo."},
+      {k:"valor",label:"Valor (R$)",money:true,req:true,ph:"0,00"},
+      {k:"venc",label:"Vencimento",type:"date"},
+      {k:"pago",label:"Situação",type:"select",opts:[["false","Em aberto"],["true","Recebido"]]}
+    ],
+    async onSave(o){ o.pago = o.pago==="true"; if(!o.clienteId && o.processoId) o.clienteId = (byId(o.processoId)||{}).clienteId || ""; await save(o); toast("Lançamento salvo."); },
+    onDelete: h.id ? async () => { await remove(h.id); toast("Lançamento excluído."); } : null
+  });
+}
+
+function viewConta(){
+  const u = USER || {}, th = (()=>{ try{ return localStorage.getItem("jus_theme")||""; }catch(e){ return ""; } })();
+  const demo = S.items.some(i => i.demo);
+  return `<div class="head"><div><h1>Conta e backup</h1><div class="sub">${esc(u.email||"")}</div></div></div>
+  <div class="grid2">
+    <div class="card"><h2>Sua conta</h2>
+      <div class="dl"><div><span>Nome</span>${esc(nomeUser(u)||"—")}</div><div><span>E-mail</span>${esc(u.email||"")}</div></div>
+      <div class="sync ${S.sync.bad?"bad":""}" id="sync-conta">${esc(S.sync.t)}</div>
+      <div class="toolbar"><button class="btn" type="button" data-act="sincronizar">Sincronizar agora</button><button class="btn" type="button" data-act="sair">Sair da conta</button></div>
+    </div>
+    <div class="card"><h2>Aparência</h2>
+      <div class="seg" role="group" aria-label="Tema">${[["","Automático"],["light","Claro"],["dark","Escuro"]].map(([k,l])=>`<button type="button" data-act="tema" data-v="${k}" class="${th===k?"on":""}">${l}</button>`).join("")}</div>
+      <div class="muted" style="font-size:13px">Automático segue o tema do seu aparelho.</div>
+    </div>
+  </div>
+  <div class="card"><h2>Backup</h2>
+    <div class="muted" style="font-size:14px">Seus dados ficam salvos na nuvem. Mesmo assim, baixe um backup de tempos em tempos. Para restaurar, escolha um arquivo de backup do SaltJus: registros com o mesmo código são substituídos e os demais são mantidos.</div>
+    <div class="toolbar"><button class="btn pri" type="button" data-act="baixar">Baixar backup</button><button class="btn" type="button" data-act="restaurar">Restaurar backup</button>
+    ${demo?`<button class="btn danger" type="button" data-act="limpar-demo">Apagar dados de exemplo</button>`:""}</div>
+    <input type="file" id="bk-file" accept="application/json,.json" hidden>
+  </div>
+  <div class="card danger-zone"><h2>Excluir conta</h2>
+    <div class="muted" style="font-size:14px">Apaga sua conta e todos os seus clientes, processos, prazos e honorários de forma definitiva. Baixe um backup antes, se quiser guardar uma cópia.</div>
+    <div><button class="btn danger" type="button" data-act="excluir-conta">Excluir minha conta</button></div>
+  </div>
+  <div class="legal muted" style="font-size:13px"><a href="termos.html">Termos de Uso</a> · <a href="privacidade.html">Política de Privacidade</a> · SaltJus, um produto SALT TECH SOLUTION</div>`;
+}
+function baixar(nome, texto){ const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([texto], {type:"application/json"})); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+async function restaurarArquivo(file){
+  try{
+    const d = JSON.parse(await file.text()), its = Array.isArray(d) ? d : d.itens;
+    if(!Array.isArray(its)) throw 0;
+    const ok = its.filter(o => o && o.t && ["cliente","processo","evento","honorario"].includes(o.t) && o.id);
+    if(!ok.length) throw 0;
+    if(!(await uiConfirm(ok.length+" registros serão restaurados. Registros com o mesmo código serão substituídos.", {title:"Restaurar backup", ok:"Restaurar"}))) return;
+    ok.forEach(o => { const i = S.items.findIndex(x => x.id===o.id); if(i>=0) S.items[i] = {...o}; else S.items.push({...o}); PEND[o.id] = {op:"up", v:++SEQ}; });
+    cacheSave(); render(); schedule(); toast(ok.length+" registros restaurados.");
+  }catch(e){ uiAlert("Esse arquivo não é um backup válido do SaltJus.", "Backup inválido"); }
+}
+async function sair(){
+  if(pendCount() && !(await uiConfirm("Algumas alterações ainda não chegaram à nuvem. Se sair agora, elas serão perdidas.", {title:"Sair da conta", ok:"Sair mesmo assim", danger:true}))) return;
+  cacheWipe(); await SB.auth.signOut(); leave();
+}
+async function excluirConta(){
+  if(!(await uiConfirm("Isso apaga sua conta e todos os seus dados de forma definitiva. Não dá para desfazer.", {title:"Excluir conta", ok:"Continuar", danger:true}))) return;
+  const v = await uiPrompt("Confirmar exclusão", "Digite EXCLUIR para confirmar", {ok:"Excluir conta"});
+  if(v===null) return;
+  if(String(v).trim().toUpperCase()!=="EXCLUIR"){ toast("Confirmação incorreta. Nada foi apagado."); return; }
+  const r = await SB.rpc("delete_my_account").catch(() => ({error:true}));
+  if(r.error){ uiAlert("Não foi possível excluir a conta agora. Tente de novo em instantes.", "Exclusão"); return; }
+  cacheWipe(); await SB.auth.signOut(); leave(); uiAlert("Sua conta e seus dados foram excluídos.", "Conta excluída");
+}
+
+/* ===================== Dados de exemplo ===================== */
+async function seedDemo(){
+  const t = today(), D = n => addDays(t,n), A = String(new Date().getFullYear()-1);
+  const c1 = {t:"cliente",demo:true,id:"cli_demo1",nome:"Marina Albuquerque Teixeira",doc:"321.654.987-00",tel:"(13) 98812-4410",email:"marina.teixeira@exemplo.com"};
+  const c2 = {t:"cliente",demo:true,id:"cli_demo2",nome:"Construtora Vale Norte Ltda.",doc:"12.345.678/0001-90",tel:"(13) 3221-7788",email:"juridico@valenorte.exemplo"};
+  const c3 = {t:"cliente",demo:true,id:"cli_demo3",nome:"Roberto Okada",doc:"456.789.123-11",tel:"(13) 99701-2236"};
+  const c4 = {t:"cliente",demo:true,id:"cli_demo4",nome:"Padaria Dois Irmãos ME",doc:"98.765.432/0001-10",tel:"(13) 3467-1020"};
+  const p1 = {t:"processo",demo:true,id:"pro_demo1",numero:cnjMake(1012345,A,"8","26","0562"),clienteId:c1.id,polo:"Autor",contraria:"Banco Horizonte S.A.",area:"Consumidor",classe:"Procedimento Comum Cível",vara:"4ª Vara Cível",comarca:"Santos",tribunal:"TJSP",distribuicao:addDays(t,-210),valor:38500,status:"Ativo",
+    andamentos:[{d:addDays(t,-210),txt:"Distribuição por sorteio."},{d:addDays(t,-150),txt:"Citação do réu cumprida."},{d:addDays(t,-90),txt:"Contestação juntada pelo réu."},{d:addDays(t,-6),txt:"Intimação para réplica publicada no DJe."}]};
+  const p2 = {t:"processo",demo:true,id:"pro_demo2",numero:cnjMake(1000782,A,"5","02","0442"),clienteId:c2.id,polo:"Reclamada",contraria:"José Carlos Menezes",area:"Trabalhista",classe:"Ação Trabalhista – Rito Ordinário",vara:"2ª Vara do Trabalho",comarca:"Santos",tribunal:"TRT2",distribuicao:addDays(t,-120),valor:92000,status:"Ativo",
+    andamentos:[{d:addDays(t,-120),txt:"Notificação inicial recebida."},{d:addDays(t,-30),txt:"Designada audiência de instrução."}]};
+  const p3 = {t:"processo",demo:true,id:"pro_demo3",numero:cnjMake(1003391,A,"8","26","0536"),clienteId:c3.id,polo:"Autor",contraria:"Luciana Okada",area:"Família",classe:"Divórcio Litigioso",vara:"1ª Vara de Família e Sucessões",comarca:"São Vicente",tribunal:"TJSP",distribuicao:addDays(t,-60),status:"Ativo",
+    andamentos:[{d:addDays(t,-60),txt:"Petição inicial distribuída."},{d:addDays(t,-20),txt:"Audiência de conciliação designada (CEJUSC)."}]};
+  const p4 = {t:"processo",demo:true,id:"pro_demo4",numero:cnjMake(5004417,A,"4","03","6104"),clienteId:c4.id,polo:"Autor",contraria:"União (Fazenda Nacional)",area:"Tributário",classe:"Mandado de Segurança Cível",vara:"4ª Vara Federal",comarca:"Santos",tribunal:"TRF3",distribuicao:addDays(t,-300),valor:15000,status:"Suspenso",
+    andamentos:[{d:addDays(t,-300),txt:"Liminar deferida."},{d:addDays(t,-100),txt:"Suspensão por afetação de tema repetitivo no STJ."}]};
+  const rep = calcPrazo(addDays(t,-6),15,true).fim;
+  const evs = [
+    {titulo:"Réplica à contestação",tipo:"Prazo",processoId:p1.id,data:rep},
+    {titulo:"Manifestação sobre documentos",tipo:"Prazo",processoId:p1.id,data:D(-1)},
+    {titulo:"Audiência de instrução",tipo:"Audiência",processoId:p2.id,data:D(2),hora:"14:30",local:"2ª VT de Santos, sala 2"},
+    {titulo:"Rol de testemunhas",tipo:"Prazo",processoId:p2.id,data:D(0)},
+    {titulo:"Audiência de conciliação (CEJUSC)",tipo:"Audiência",processoId:p3.id,data:D(9),hora:"10:00",local:"Videoconferência"},
+    {titulo:"Reunião com o cliente para preparar audiência",tipo:"Reunião",processoId:p3.id,data:D(6),hora:"17:00"},
+    {titulo:"Retirar certidão de objeto e pé",tipo:"Diligência",processoId:p4.id,data:D(12)},
+    {titulo:"Contestação",tipo:"Prazo",processoId:p2.id,data:D(-40),feito:true}
+  ].map((e,i)=>({t:"evento",demo:true,id:"eve_demo"+i,feito:false,...e}));
+  const hons = [
+    {descricao:"Honorários contratuais – parcela 3/6",processoId:p1.id,clienteId:c1.id,valor:1200,venc:D(-5),pago:false},
+    {descricao:"Honorários contratuais – parcela 4/6",processoId:p1.id,clienteId:c1.id,valor:1200,venc:D(25),pago:false},
+    {descricao:"Pró-labore defesa trabalhista",processoId:p2.id,clienteId:c2.id,valor:6500,venc:D(-30),pago:true},
+    {descricao:"Entrada – divórcio",processoId:p3.id,clienteId:c3.id,valor:3000,venc:D(10),pago:false}
+  ].map((h,i)=>({t:"honorario",demo:true,id:"hon_demo"+i,...h}));
+  for(const o of [c1,c2,c3,c4,p1,p2,p3,p4,...evs,...hons]) await save(o);
+  toast("Exemplo carregado. Apague em Conta e backup quando quiser.");
+}
+
+/* ===================== Eventos ===================== */
+function toast(msg){ const el=document.createElement("div"); el.className="toast"; el.textContent=msg; document.body.appendChild(el); setTimeout(()=>el.remove(),3200); }
+
+document.addEventListener("click", async ev => {
+  const el = ev.target.closest("[data-act]"); if(!el) return;
+  const a = el.dataset.act, id = el.dataset.id;
+  if(a==="fechar-bg" && ev.target!==el) return;
+  switch(a){
+    case "fechar": case "fechar-bg": closeModal(); break;
+    case "novo-proc": formProcesso(); break;
+    case "edit-proc": formProcesso({...byId(id)}); break;
+    case "abrir-proc": closeModal(); S.sel=id; if(location.hash!=="#processos"){ history.pushState(null,"","#processos"); } S.view="processos"; render(); window.scrollTo(0,0); break;
+    case "voltar": S.sel=null; render(); break;
+    case "novo-ev": formEvento({t:"evento",tipo:"Prazo",data:today(),feito:false,processoId:el.dataset.proc||S.sel||""}); break;
+    case "edit-ev": formEvento({...byId(id)}); break;
+    case "toggle-ev": { const e={...byId(id)}; e.feito=!e.feito; await save(e); break; }
+    case "novo-cli": formCliente(); break;
+    case "edit-cli": formCliente({...byId(id)}); break;
+    case "novo-hon": { const p = byId(el.dataset.proc); formHonorario({t:"honorario",pago:false,processoId:p?p.id:"",clienteId:p?p.clienteId:""}); break; }
+    case "edit-hon": formHonorario({...byId(id), pago:String(!!byId(id).pago)}); break;
+    case "toggle-hon": { const h={...byId(id)}; h.pago=!h.pago; await save(h); break; }
+    case "f-status": S.filtroProc.status = el.dataset.v; render(); break;
+    case "f-st": S.filtroPrazo.st = el.dataset.v; render(); break;
+    case "demo": el.disabled = true; await seedDemo(); break;
+    case "baixar": baixar("backup-saltjus-"+today()+".json", JSON.stringify({app:"saltjus", versao:1, exportado:new Date().toISOString(), itens:S.items}, null, 1)); toast("Backup baixado."); break;
+    case "restaurar": { const fi = $("#bk-file"); fi.value = ""; fi.onchange = () => { if(fi.files[0]) restaurarArquivo(fi.files[0]); }; fi.click(); break; }
+    case "sincronizar": sincronizar(); break;
+    case "sair": sair(); break;
+    case "excluir-conta": excluirConta(); break;
+    case "tema": { const v = el.dataset.v; try{ if(v) localStorage.setItem("jus_theme", v); else localStorage.removeItem("jus_theme"); }catch(e){} if(v) document.documentElement.setAttribute("data-theme", v); else document.documentElement.removeAttribute("data-theme"); render(); break; }
+    case "limpar-demo": { if(!(await uiConfirm("Apagar todos os clientes, processos, prazos e honorários de exemplo? Seus próprios cadastros não são afetados.", {title:"Apagar exemplo", ok:"Apagar", danger:true}))) break;
+      S.items.filter(i=>i.demo).forEach(i => { PEND[i.id] = {op:"del", v:++SEQ}; }); S.items = S.items.filter(i=>!i.demo); cacheSave(); render(); schedule(); toast("Dados de exemplo apagados."); break; }
+    case "calc": {
+      const ini = $("#c-ini").value || today(), n = Number($("#c-dias").value)||1, u = $("#c-tipo").value==="u";
+      const r = calcPrazo(ini, n, u);
+      $("#c-out").innerHTML = `Vence em <b>${fmtDL(r.fim)}</b> <span class="chip ${urg({data:r.fim}).chip}">${urg({data:r.fim}).txt}</span>
+        ${r.pulados.length?`<div class="muted" style="font-size:13px;margin-top:4px">Dias desconsiderados: ${r.pulados.map(([d,m])=>fmtD(d).slice(0,5)+" ("+esc(m)+")").join(", ")}</div>`:""}
+        <div class="muted" style="font-size:12px;margin-top:4px">Conta a partir do dia útil seguinte à intimação. Considera feriados nacionais e o recesso de 20/12 a 20/01; feriados locais e suspensões do tribunal não entram.</div>
+        <div style="margin-top:8px"><button class="btn sm pri" type="button" data-act="calc-criar" data-v="${r.fim}">Criar prazo com essa data</button></div>`;
+      break; }
+    case "calc-criar": formEvento({t:"evento",tipo:"Prazo",data:el.dataset.v,feito:false}); break;
+  }
+});
+document.addEventListener("keydown", e => { if(e.key==="Enter" && e.target.matches("tr.click")) e.target.click(); });
+
+function afterRender(){
+  const q = $("#q-proc");
+  if(q){ q.addEventListener("input", () => { S.filtroProc.q = q.value; const pos=q.selectionStart; render(); const n=$("#q-proc"); n.focus(); n.setSelectionRange(pos,pos); }); }
+  const ft = $("#f-tipo"); if(ft) ft.addEventListener("change", () => { S.filtroPrazo.tipo = ft.value; render(); });
+  const fa = $("#f-and");
+  if(fa) fa.addEventListener("submit", async e => { e.preventDefault(); const p = {...byId(S.sel)}; const txt=$("#and-txt").value.trim(); if(!txt) return;
+    p.andamentos = [...(p.andamentos||[]), {d:$("#and-d").value||today(), txt}]; await save(p); toast("Andamento registrado."); });
+}
+
+initAuth();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
